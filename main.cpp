@@ -30,10 +30,17 @@ float getang(Point2f point0, Point2f pointA)
     angle=atan(a/b);
     return angle;
 }
-int main()
+int main(int argc, char *argv[])
 {
-    string path = "/home/yw/Documents/testall2/test2.mp4";
+    if (argc != 2)
+        return -1;
+    string path = argv[1];
     VideoCapture cap(path);
+    if (!cap.isOpened())
+    {
+        cout << "failed to open the video!" << endl;
+        return -1;
+    }
     Mat img, binary, morimg;
     while (cap.read(img))
     {
@@ -137,18 +144,12 @@ int main()
         float angle=getang(PointDis[0], PointDis[1]);
         cout << "The distance is " << distance << endl;
         cout<<"The angle is "<<angle<<endl;
-        putText(img,"The distance is " + to_string(distance),Point(10,262),FONT_HERSHEY_DUPLEX,0.75,Scalar(0,0,0),5);
-        putText(img,"The angle is " + to_string(angle),Point(10,262),FONT_HERSHEY_DUPLEX,0.75,Scalar(0,0,0),5);
+        putText(img,"The distance is " + to_string(distance),Point(1,20),FONT_HERSHEY_DUPLEX,0.75,Scalar(255,255,255),1);
+        putText(img,"The angle is " + to_string(angle),Point(1,40),FONT_HERSHEY_DUPLEX,0.75,Scalar(255,255,255),1);
         }
 
 
-        vector<Point3f>objP;
-        Mat objM;
-        objP.clear();
-        objP.push_back(Point3f(0,0,0));
-        objP.push_back(Point3f(700,0,0));
-        objP.push_back(Point3f(0,700,0));
-        objP.push_back(Point3f(700,700,0));
+
 
 
 
