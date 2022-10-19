@@ -1,13 +1,20 @@
 #include <opencv2/highgui.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/video/tracking.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core.hpp>
 #include <math.h>
-#include<string.h>
-
+#include <string.h>
 #include <iostream>
+#include <KalmanFilterX.hpp>
+#define PAI 3.14159265359
 
 using namespace std;
 using namespace cv;
+
+inline float rad2deg(float rad) { return rad * 180.f / PAI; }
+inline float deg2rad(float deg) { return deg / 180.f * PAI; }
+
 float getDis(Point2f point0, Point2f pointA)
 {
     float distance;
@@ -15,6 +22,7 @@ float getDis(Point2f point0, Point2f pointA)
     distance = sqrtf(distance);
     return distance;
 }
+
 Point2f center(Point2f point0, Point2f point1, Point2f point2, Point2f point3)
 {
     Point2f PointDis;
@@ -22,28 +30,48 @@ Point2f center(Point2f point0, Point2f point1, Point2f point2, Point2f point3)
     PointDis.y = (point0.y + point1.y + point2.y + point3.y) / 4;
     return PointDis;
 }
+
 float getang(Point2f point0, Point2f pointA)
 {
-    float angle,a,b;
-    a=pointA.y-point0.y;
-    b=pointA.x-point0.x;
-    angle=atan(a/b);
+    float angle, a, b;
+    a = pointA.y - point0.y;
+    b = pointA.x - point0.x;
+    angle = atan(a / b);
     return angle;
 }
+
 int main(int argc, char *argv[])
 {
+    // KalmanFilter KF(2, 1, 0);
+    // Mat state(2, 1, CV_32F); /* (phi, delta_phi) */
+    // Mat processNoise(2, 1, CV_32F);
+    // Mat measurement = Mat::zeros(1, 1, CV_32F);
+    // // kal for test//
+
     if (argc != 2)
         return -1;
     string path = argv[1];
     VideoCapture cap(path);
+    // float fps = cap.get(CAP_PROP_FPS); // calculate the fps to get the time between each capture
     if (!cap.isOpened())
     {
         cout << "failed to open the video!" << endl;
         return -1;
     }
     Mat img, binary, morimg;
+    float angle = 0.f, fuangle = 0.f, testangle = 0.f;
     while (cap.read(img))
     {
+
+        // // kal for test//
+        // // randn(state, Scalar::all(0), Scalar::all(0.1));
+        // // KF.transitionMatrix = (Mat_<float>(2, 2) << 1, 1, 0, 1);
+        // // setIdentity(KF.measurementMatrix);
+        // // setIdentity(KF.processNoiseCov, Scalar::all(1e-5));
+        // // setIdentity(KF.measurementNoiseCov, Scalar::all(1e-1));
+        // // setIdentity(KF.errorCovPost, Scalar::all(1));
+        // // randn(KF.statePost, Scalar::all(0), Scalar::all(0.1));
+        // // kal for test //
         vector<Mat> channels(3);
         split(img, channels.data());
 
@@ -68,7 +96,7 @@ int main(int argc, char *argv[])
                  hierarchy[i][1] != -1) &&
                 hierarchy[i][2] == -1 &&
                 hierarchy[i][3] == -1 &&
-                contourArea(contours[i]) < 190 &&
+                contourArea(contours[i]) < 180 &&
                 110 < contourArea(contours[i]))
             {
                 RotatedRect temp = minAreaRect(contours[i]);
@@ -76,6 +104,7 @@ int main(int argc, char *argv[])
                 rune_centers.push_back(temp);
             }
         }
+
         for (size_t i = 0; i < rune_centers.size(); i++)
         {
             rune_centers[i].points(fourPoints.data());
@@ -137,29 +166,50 @@ int main(int argc, char *argv[])
             }
         }
 
-         float distance = getDis(PointDis[0], PointDis[1]);
-        if (105<distance&&distance<140)
-        {      
-        line(img, PointDis[0], PointDis[1], Scalar(0, 0, 255), 2);
-        float angle=getang(PointDis[0], PointDis[1]);
-        cout << "The distance is " << distance << endl;
-        cout<<"The angle is "<<angle<<endl;
-        putText(img,"The distance is " + to_string(distance),Point(1,20),FONT_HERSHEY_DUPLEX,0.75,Scalar(255,255,255),1);
-        putText(img,"The angle is " + to_string(angle),Point(1,40),FONT_HERSHEY_DUPLEX,0.75,Scalar(255,255,255),1);
+        float distance = getDis(PointDis[0], PointDis[1]);
+        if (105 < distance && distance < 140)
+        {
+            line(img, PointDis[0], PointDis[1], Scalar(0, 0, 255), 2);
+            angle = getang(PointDis[0], PointDis[1]);
+            fuangle = 5 * (angle - testangle) + angle; // calculate the future angle after 5
+            testangle = angle;
+            while (fuangle > PAI || fuangle < -PAI)
+            {
+                if (fuangle > PAI)
+                    fuangle = fuangle - PAI;
+                else
+                    fuangle = fuangle + PAI;
+            }
+            // float fuangle1 = fuangle, angle1 = angle;
+            putText(img, "The distance is " + to_string(distance), Point(1, 20), FONT_HERSHEY_COMPLEX, 0.75, Scalar(255, 255, 255));
+            putText(img, "The angle is " + to_string(angle), Point(1, 40), FONT_HERSHEY_COMPLEX, 0.75, Scalar(255, 255, 255));
+            putText(img, "The future angle is " + to_string(fuangle), Point(1, 60), FONT_HERSHEY_COMPLEX, 0.75, Scalar(255, 255, 255));
+            // Show predicted line
+            Matx21f raw_vec = {PointDis[1].x - PointDis[0].x,
+                               PointDis[1].y - PointDis[0].y};
+            Matx22f rot_mat = {cosf(fuangle - angle), -sinf(fuangle - angle),
+                               sinf(fuangle - angle), cosf(fuangle - angle)};
+            Matx21f vec_after_rot = rot_mat * raw_vec;
+
+            line(img, PointDis[0], Point2f(PointDis[0].x + vec_after_rot(0), PointDis[0].y + vec_after_rot(1)),
+                 Scalar(0, 0, 255), 2);
+            // // This line is without KalmanFilter
+            // double stateAngle = state.at<float>(0);
+            // randn(measurement, Scalar::all(0), Scalar::all(KF.measurementNoiseCov.at<float>(0)));
+            // Mat prediction = KF.predict();
+            // double measAngle = measurement.at<float>(0);
+            // measurement += KF.measurementMatrix*state;
+ 
+			// double measAngle = measurement.at<float>(0);
+            
+            // // float a=KalmanFilterX.correct();
+
+            imshow("test2", img);
+            // imshow("test3", binary);
+            // imshow("test4", morimg);
+            if (waitKey(80) == 27) // Esc
+                if (waitKey(0) == 27)
+                    break;
         }
-
-
-
-
-
-
-
-
-        imshow("test2", img);
-        // imshow("test3", binary);
-        // imshow("test4", morimg);
-        if (waitKey(80) == 27) // Esc
-            if (waitKey(0) == 27)
-                break;
     }
 }
