@@ -42,17 +42,33 @@ float getang(Point2f point0, Point2f pointA)
 
 int main(int argc, char *argv[])
 {
-    // KalmanFilter KF(2, 1, 0);
-    // Mat state(2, 1, CV_32F); /* (phi, delta_phi) */
+
+    /* (phi, delta_phi) */
     // Mat processNoise(2, 1, CV_32F);
     // Mat measurement = Mat::zeros(1, 1, CV_32F);
     // // kal for test//
+    // create object
+    // ini
+    // set A
+    // set H
 
     if (argc != 2)
         return -1;
     string path = argv[1];
     VideoCapture cap(path);
-    // float fps = cap.get(CAP_PROP_FPS); // calculate the fps to get the time between each capture
+    //float fps = cap.get(CAP_PROP_FPS); // calculate the fps to get the time between each capture
+
+
+    //KalmanFilter KF(1, 0.1);
+    //KalmanFilterX<2U, 2U> KF(1, 0.1); // TODO
+    // Matx<float, 2, 1> x(0, 0);
+    // Matx<float, 2, 2> A(1, 1 / fps,
+    //                     0, 1);
+    // Matx<float, 2, 2> H(1, 0,
+    //                     0, 1);
+    // KF.transitionMatrix(A);
+    // KF.measurementMatrix(H);
+
     if (!cap.isOpened())
     {
         cout << "failed to open the video!" << endl;
@@ -64,13 +80,7 @@ int main(int argc, char *argv[])
     {
 
         // // kal for test//
-        // // randn(state, Scalar::all(0), Scalar::all(0.1));
-        // // KF.transitionMatrix = (Mat_<float>(2, 2) << 1, 1, 0, 1);
-        // // setIdentity(KF.measurementMatrix);
-        // // setIdentity(KF.processNoiseCov, Scalar::all(1e-5));
-        // // setIdentity(KF.measurementNoiseCov, Scalar::all(1e-1));
-        // // setIdentity(KF.errorCovPost, Scalar::all(1));
-        // // randn(KF.statePost, Scalar::all(0), Scalar::all(0.1));
+
         // // kal for test //
         vector<Mat> channels(3);
         split(img, channels.data());
@@ -180,6 +190,7 @@ int main(int argc, char *argv[])
                 else
                     fuangle = fuangle + PAI;
             }
+
             // float fuangle1 = fuangle, angle1 = angle;
             putText(img, "The distance is " + to_string(distance), Point(1, 20), FONT_HERSHEY_COMPLEX, 0.75, Scalar(255, 255, 255));
             putText(img, "The angle is " + to_string(angle), Point(1, 40), FONT_HERSHEY_COMPLEX, 0.75, Scalar(255, 255, 255));
@@ -193,15 +204,23 @@ int main(int argc, char *argv[])
 
             line(img, PointDis[0], Point2f(PointDis[0].x + vec_after_rot(0), PointDis[0].y + vec_after_rot(1)),
                  Scalar(0, 0, 255), 2);
-            // // This line is without KalmanFilter
-            // double stateAngle = state.at<float>(0);
-            // randn(measurement, Scalar::all(0), Scalar::all(KF.measurementNoiseCov.at<float>(0)));
-            // Mat prediction = KF.predict();
+            // This line is without KalmanFilter
+
+            // x = {angle, (angle - testangle) * fps};
+            // KF.predict();
+            // Matx<float, 2, 1> x_hat = KF.correct(x);
+            // Matx<float, 2, 2> A = {1, 5 / fps,
+            //                        0, 1};
+            // Matx<float, 2, 1> x_predict = A * x_hat;
+            // cout << x_predict << endl;
+            // x_predict(0);
+            // rot_mat = {cosf(x_predict(0)), -sinf(x_predict(0)),
+            //                    sinf(x_predict(0)), cosf(x_predict(0))};
+            //  vec_after_rot = rot_mat * raw_vec;
+            // line(img, PointDis[0], Point2f(PointDis[0].x + vec_after_rot(0), PointDis[0].y + vec_after_rot(1)),
+            //      Scalar(0, 255, 255), 2);
             // double measAngle = measurement.at<float>(0);
-            // measurement += KF.measurementMatrix*state;
- 
-			// double measAngle = measurement.at<float>(0);
-            
+
             // // float a=KalmanFilterX.correct();
 
             imshow("test2", img);
